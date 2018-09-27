@@ -12,10 +12,32 @@ import java.nio.charset.Charset;
 public class OidcClient {
   private static final Charset CHARSET = Charset.forName("UTF-8");
 
-  public enum GrantType {
+  /**
+   * Authentication Grant types
+   */
+  public enum FetchMethod {
+
+    /**
+     * A two-step authentication, used by confidential and public clients to exchange authorization code for an access-token.
+     * - User identifies itself and is redirected back via a redirect URL with an authorization code. The client then uses the
+     * authorization code to request an access-token.
+     */
     AUTHORIZATION_CODE_GRANT,
+
+    /**
+     * After eventual expiration of an access token. The refresh token, and following grant type is used to request a new
+     * access token without the need for user redirection.
+     * - Client sends refresh_token, client_id, (possible) client_secret and scope to retrieve access token.
+     */
     REFRESH_TOKEN_GRANT,
-    CLIENT_CREDENTIALS_GRANT
+
+    /**
+     * Suitable for machine-to-machine communication, where a specific users permission to access data is not required.
+     * - Client sends POST request with client_id, (possible) client_secret and scope to retrieve access token.
+     */
+    CLIENT_CREDENTIALS_GRANT,
+
+    IMPLICIT_GRANT
   }
 
   public static class Builder {
@@ -59,7 +81,8 @@ public class OidcClient {
         throw new IllegalArgumentException("Following builder setters are mandatory" +
             "\n setAuthUrl" +
             "\n setTokenUrl" +
-            "\n setClientId"
+            "\n setClientId" +
+            "\n setRedirectUri"
         );
       }
 
@@ -102,32 +125,48 @@ public class OidcClient {
         .toString();
   }
 
-  public JsonObject performTokenCall(GrantType grantType){
+  public JsonObject performTokenCall(FetchMethod grantType){
+    if( grantType != FetchMethod.CLIENT_CREDENTIALS_GRANT ||
+        grantType != FetchMethod.IMPLICIT_GRANT )
+      throw new UnsupportedOperationException("Unsupported: Must provide token for grant-type:" + grantType.toString());
     return performTokenCall( "", grantType );
   }
 
-  public JsonObject performTokenCall(final String token, GrantType grantType) {
+  public JsonObject performTokenCall(final String token, FetchMethod grantType) {
     final StringBuilder formBodyBuilder;
 
     switch ( grantType ){
+
       case AUTHORIZATION_CODE_GRANT:
+
         formBodyBuilder = new StringBuilder("grant_type=authorization_code")
             .append("&code=")
             .append(URLEncoder.encode(token, CHARSET));
         break;
+
       case CLIENT_CREDENTIALS_GRANT:
         formBodyBuilder = new StringBuilder("grant_type=client_credentials")
             .append("&client_secret=")
             .append(URLEncoder.encode(this.clientSecret, CHARSET));
         break;
+
       case REFRESH_TOKEN_GRANT:
         formBodyBuilder = new StringBuilder("grant_type=refresh_token")
             .append("&refresh_token=")
             .append(URLEncoder.encode(token, CHARSET));
         break;
+
+      case IMPLICIT_GRANT:
+        throw new UnsupportedOperationException( "Auth flow not yet implemented" );
+
       default:
         throw new IllegalArgumentException( "Unsupported/Unknown grant type specified:  " + grantType );
     }
+
+    // Add Client Secret to token-call, if supplied
+    if(!clientSecret.isEmpty())
+      formBodyBuilder.append( "$client_secret=" )
+          .append( URLEncoder.encode( clientSecret, CHARSET ) );
 
     final var formBody = formBodyBuilder
         .append("&redirect_uri=")

@@ -23,7 +23,8 @@ public class OidcApp extends Application {
   private static final String AUTH_URL = "https://example.com/openid-connect/auth";
   private static final String TOKEN_URL = "https://example.com/openid-connect/token";
 
-  private final OidcClient oidcClient = OidcClient.Builder.newBuilder().setRedirectUri(REDIRECT_URL)
+  private final OidcClient oidcClient = OidcClient.Builder.newBuilder()
+      .setRedirectUri(REDIRECT_URL)
       .setAuthUrl(AUTH_URL)
       .setTokenUrl(TOKEN_URL)
       .setClientId(CLIENT_ID)
@@ -98,7 +99,7 @@ public class OidcApp extends Application {
     }
 
     // Do OAuth 2 token requests
-    final JsonObject tokenJson = oidcClient.performTokenCall(authCode, OidcClient.GrantType.AUTHORIZATION_CODE_GRANT);
+    final JsonObject tokenJson = oidcClient.performTokenCall(authCode, OidcClient.FetchMethod.AUTHORIZATION_CODE_GRANT);
     long refreshDelay = tokenJson.getInt("expires_in") * 1000L;
     processTokenJson(tokenJson);
 
@@ -112,7 +113,7 @@ public class OidcApp extends Application {
     timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
-        final var tokenJson = oidcClient.performTokenCall(refreshToken, OidcClient.GrantType.REFRESH_TOKEN_GRANT);
+        final var tokenJson = oidcClient.performTokenCall(refreshToken, OidcClient.FetchMethod.REFRESH_TOKEN_GRANT);
         processTokenJson(tokenJson);
       }
     }, refreshDelay, refreshDelay);
