@@ -12,9 +12,10 @@ import java.nio.charset.Charset;
 public class OidcClient {
   private static final Charset CHARSET = Charset.forName("UTF-8");
 
-  public enum TokenType {
-    AUTH,
-    REFRESH
+  public enum GrantType {
+    AUTHORIZATION_CODE_GRANT,
+    REFRESH_TOKEN_GRANT,
+    CLIENT_CREDENTIALS_GRANT
   }
 
   public static class Builder {
@@ -22,6 +23,7 @@ public class OidcClient {
     private String authUrl;
     private String clientId;
     private String redirectUri;
+    private String clientSecret;
 
     public static Builder newBuilder() {
       return new Builder();
@@ -47,12 +49,21 @@ public class OidcClient {
       return this;
     }
 
+    public Builder setClientSecret(final String clientSecret){
+      this.clientSecret = clientSecret;
+      return this;
+    }
+
     public OidcClient build() {
       if (tokenUrl == null || authUrl == null || clientId == null || redirectUri == null) {
-        throw new IllegalArgumentException("All builder setters are mandatory.");
+        throw new IllegalArgumentException("Following builder setters are mandatory" +
+            "\n setAuthUrl" +
+            "\n setTokenUrl" +
+            "\n setClientId"
+        );
       }
 
-      return new OidcClient(tokenUrl, authUrl, clientId, redirectUri);
+      return new OidcClient(tokenUrl, authUrl, clientId, redirectUri, clientSecret);
     }
   }
 
@@ -60,16 +71,19 @@ public class OidcClient {
   private final String authUrl;
   private final String clientId;
   private final String redirectUri;
+  private final String clientSecret;
 
-  private OidcClient(String tokenUrl, String authUrl, String clientId, String redirectUri) {
+  private OidcClient(String tokenUrl, String authUrl, String clientId, String redirectUri, String clientSecret) {
     this.tokenUrl = tokenUrl;
     this.authUrl = authUrl;
     this.clientId = clientId;
     this.redirectUri = redirectUri;
+    this.clientSecret = clientSecret;
   }
 
   /**
    * Generates a complete URL to the auth-endpoint. It is up to the caller to decide how she or he wants to open a browser.
+   * Specific for the Authorization_code grant type
    *
    * @param state the state to send with the auth-request.
    * @return a complete auth-URL.
@@ -88,17 +102,31 @@ public class OidcClient {
         .toString();
   }
 
-  public JsonObject performTokenCall(final String token, TokenType tokenType) {
-    final StringBuilder formBodyBuilder;
-    if (tokenType == TokenType.AUTH) {
-      formBodyBuilder = new StringBuilder("grant_type=authorization_code")
-          .append("&code=")
-          .append(URLEncoder.encode(token, CHARSET));
-    } else {
-      formBodyBuilder = new StringBuilder("grant_type=refresh_token")
-          .append("&refresh_token=")
-          .append(URLEncoder.encode(token, CHARSET));
+  public JsonObject performTokenCall(GrantType grantType){
+    return performTokenCall( "", grantType );
+  }
 
+  public JsonObject performTokenCall(final String token, GrantType grantType) {
+    final StringBuilder formBodyBuilder;
+
+    switch ( grantType ){
+      case AUTHORIZATION_CODE_GRANT:
+        formBodyBuilder = new StringBuilder("grant_type=authorization_code")
+            .append("&code=")
+            .append(URLEncoder.encode(token, CHARSET));
+        break;
+      case CLIENT_CREDENTIALS_GRANT:
+        formBodyBuilder = new StringBuilder("grant_type=client_credentials")
+            .append("&client_secret=")
+            .append(URLEncoder.encode(this.clientSecret, CHARSET));
+        break;
+      case REFRESH_TOKEN_GRANT:
+        formBodyBuilder = new StringBuilder("grant_type=refresh_token")
+            .append("&refresh_token=")
+            .append(URLEncoder.encode(token, CHARSET));
+        break;
+      default:
+        throw new IllegalArgumentException( "Unsupported/Unknown grant type specified:  " + grantType );
     }
 
     final var formBody = formBodyBuilder

@@ -98,7 +98,7 @@ public class OidcApp extends Application {
     }
 
     // Do OAuth 2 token requests
-    final JsonObject tokenJson = oidcClient.performTokenCall(authCode, OidcClient.TokenType.AUTH);
+    final JsonObject tokenJson = oidcClient.performTokenCall(authCode, OidcClient.GrantType.AUTHORIZATION_CODE_GRANT);
     long refreshDelay = tokenJson.getInt("expires_in") * 1000L;
     processTokenJson(tokenJson);
 
@@ -112,7 +112,7 @@ public class OidcApp extends Application {
     timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
-        final var tokenJson = oidcClient.performTokenCall(refreshToken, OidcClient.TokenType.REFRESH);
+        final var tokenJson = oidcClient.performTokenCall(refreshToken, OidcClient.GrantType.REFRESH_TOKEN_GRANT);
         processTokenJson(tokenJson);
       }
     }, refreshDelay, refreshDelay);
