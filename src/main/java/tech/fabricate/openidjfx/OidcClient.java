@@ -126,7 +126,7 @@ public class OidcClient {
   }
 
   public JsonObject performTokenCall(FetchMethod grantType){
-    if( grantType != FetchMethod.CLIENT_CREDENTIALS_GRANT ||
+    if( grantType != FetchMethod.CLIENT_CREDENTIALS_GRANT &&
         grantType != FetchMethod.IMPLICIT_GRANT )
       throw new UnsupportedOperationException("Unsupported: Must provide token for grant-type:" + grantType.toString());
     return performTokenCall( "", grantType );
@@ -164,8 +164,8 @@ public class OidcClient {
     }
 
     // Add Client Secret to token-call, if supplied
-    if(!clientSecret.isEmpty())
-      formBodyBuilder.append( "$client_secret=" )
+    if(clientSecret != null)
+      formBodyBuilder.append( "&client_secret=" )
           .append( URLEncoder.encode( clientSecret, CHARSET ) );
 
     final var formBody = formBodyBuilder
@@ -191,6 +191,7 @@ public class OidcClient {
         return Json.createReader(is).readObject();
       }
     } catch (final IOException e) {
+      e.printStackTrace();
       throw new IllegalStateException("Unable to transmit auth token to token-endpoint.", e);
     }
   }

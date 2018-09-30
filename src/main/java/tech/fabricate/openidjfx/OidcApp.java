@@ -20,6 +20,7 @@ public class OidcApp extends Application {
   private static final int REDIRECT_PORT = 32323;
   private static final String REDIRECT_URL = "http://localhost:" + REDIRECT_PORT + "/oidc";
   private static final String CLIENT_ID = "myclient";
+  private static final String CLIENT_SECRET = "myclient-secret";
   private static final String AUTH_URL = "https://example.com/openid-connect/auth";
   private static final String TOKEN_URL = "https://example.com/openid-connect/token";
 
@@ -28,9 +29,10 @@ public class OidcApp extends Application {
       .setAuthUrl(AUTH_URL)
       .setTokenUrl(TOKEN_URL)
       .setClientId(CLIENT_ID)
+      .setClientSecret( CLIENT_SECRET )
       .build();
 
-  private Text text;
+  private Text statusText;
   private String expectedState;
   private String accessToken;
   private String refreshToken;
@@ -42,18 +44,29 @@ public class OidcApp extends Application {
   public void start(final Stage primaryStage) throws Exception {
     runHttpServer();
 
-    final var loginBtn = new Button("Login");
-    loginBtn.setOnAction(this::initiateLogin);
+    final var loginACGBtn = new Button("Login using Authorization Code Grant");
+    loginACGBtn.setOnAction(this::initiateAuthCodeLogin);
 
-    text = new Text("Not logged in, yet!");
-    text.setWrappingWidth(800);
-    final var pane = new FlowPane(Orientation.VERTICAL, loginBtn, text);
-    final var scene = new Scene(pane, 850, 500);
+    final var loginCAGBtn = new Button("Login using Client Credentials Grant");
+    loginCAGBtn.setOnAction(this::initiateClientCredLogin);
+
+    statusText = new Text("Not logged in, yet!");
+    statusText.setWrappingWidth(800);
+    final var pane = new FlowPane(
+        Orientation.HORIZONTAL,
+        loginACGBtn,
+        loginCAGBtn,
+        statusText
+    );
+
+    final var scene = new Scene(pane, 800, 500);
 
     primaryStage.setTitle("OpenID Connect Login from Desktop app");
     primaryStage.setScene(scene);
     primaryStage.show();
   }
+
+
 
   private void runHttpServer() throws Exception {
     final var httpServer = HttpServer.create(new InetSocketAddress(REDIRECT_PORT), 0);
@@ -86,11 +99,19 @@ public class OidcApp extends Application {
     httpServer.start();
   }
 
-  private void initiateLogin(final ActionEvent actionEvent) {
+  private void initiateAuthCodeLogin(final ActionEvent actionEvent) {
     expectedState = UUID.randomUUID().toString();
 
     // Fire up browser with a generated auth URL.
     getHostServices().showDocument(oidcClient.generateAuthCall(expectedState));
+  }
+
+  private void initiateClientCredLogin ( ActionEvent actionEvent ) {
+    expectedState = UUID.randomUUID().toString();
+
+    final var tokenJson = oidcClient.performTokenCall( OidcClient.FetchMethod.CLIENT_CREDENTIALS_GRANT );
+    initTokenRefresher( tokenJson );
+    processTokenJson( tokenJson );
   }
 
   private void processRedirectCall(final String authCode, final String state) {
@@ -100,9 +121,20 @@ public class OidcApp extends Application {
 
     // Do OAuth 2 token requests
     final JsonObject tokenJson = oidcClient.performTokenCall(authCode, OidcClient.FetchMethod.AUTHORIZATION_CODE_GRANT);
-    long refreshDelay = tokenJson.getInt("expires_in") * 1000L;
+    initTokenRefresher( tokenJson );
     processTokenJson(tokenJson);
+  }
 
+  private void processTokenJson(final JsonObject tokenJson) {
+    accessToken = tokenJson.getString("access_token");
+    refreshToken = tokenJson.getString("refresh_token");
+    statusText.setText("\nAccess Token: " + accessToken
+        + "\n\nRefresh Token: " + refreshToken);
+  }
+
+  private void initTokenRefresher(JsonObject tokenJson){
+
+    long refreshDelay = tokenJson.getInt("expires_in") * 1000L;
     /*
      Now schedule to get new access and refresh tokens based on expiry. CAVEAT EMPTOR: In a real-world application
      you would probably not blindly refresh just because the access token expires. You would implement an algorithm
@@ -117,12 +149,6 @@ public class OidcApp extends Application {
         processTokenJson(tokenJson);
       }
     }, refreshDelay, refreshDelay);
-  }
 
-  private void processTokenJson(final JsonObject tokenJson) {
-    accessToken = tokenJson.getString("access_token");
-    refreshToken = tokenJson.getString("refresh_token");
-    text.setText("\nAccess Token: " + accessToken
-        + "\n\nRefresh Token: " + refreshToken);
   }
 }
