@@ -109,8 +109,7 @@ public class OidcApp extends Application {
   private void initiateClientCredLogin ( ActionEvent actionEvent ) {
     expectedState = UUID.randomUUID().toString();
 
-    final var formBody = oidcClient.generateTokenQuery( OidcClient.FetchMethod.CLIENT_CREDENTIALS_GRANT );
-    final var tokenJson = oidcClient.performTokenCall( formBody );
+    final var tokenJson = oidcClient.performTokenCall( OidcClient.FetchMethod.CLIENT_CREDENTIALS_GRANT );
     initTokenRefresher( tokenJson );
     processTokenJson( tokenJson );
   }
@@ -121,8 +120,7 @@ public class OidcApp extends Application {
     }
 
     // Do OAuth 2 token requests
-    final var formBody = oidcClient.generateTokenQuery( authCode, OidcClient.FetchMethod.AUTHORIZATION_CODE_GRANT );
-    final JsonObject tokenJson = oidcClient.performTokenCall(formBody);
+    final JsonObject tokenJson = oidcClient.performTokenCall(authCode, OidcClient.FetchMethod.AUTHORIZATION_CODE_GRANT);
     initTokenRefresher( tokenJson );
     processTokenJson(tokenJson);
   }
@@ -147,8 +145,7 @@ public class OidcApp extends Application {
     timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
-        final var formBody = oidcClient.generateTokenQuery( refreshToken, OidcClient.FetchMethod.REFRESH_TOKEN_GRANT );
-        final var tokenJson = oidcClient.performTokenCall(formBody);
+        final var tokenJson = oidcClient.performTokenCall(refreshToken, OidcClient.FetchMethod.REFRESH_TOKEN_GRANT);
         processTokenJson(tokenJson);
       }
     }, refreshDelay, refreshDelay);

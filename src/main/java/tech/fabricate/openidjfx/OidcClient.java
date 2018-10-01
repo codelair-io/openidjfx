@@ -125,27 +125,14 @@ public class OidcClient {
         .toString();
   }
 
-  /**
-   * Generates a formbody for the token-endpoint.
-   *
-   * @param grantType
-   * @return
-   */
-  public String generateTokenQuery(FetchMethod grantType){
+  public JsonObject performTokenCall(FetchMethod grantType){
     if( grantType != FetchMethod.CLIENT_CREDENTIALS_GRANT &&
         grantType != FetchMethod.IMPLICIT_GRANT )
       throw new UnsupportedOperationException("Unsupported: Must provide token for grant-type:" + grantType.toString());
-    return generateTokenQuery( "", grantType );
+    return performTokenCall( "", grantType );
   }
 
-  /**
-   * Generates a formbody for the token-endpoint.
-   *
-   * @param token
-   * @param grantType
-   * @return a query string containing form-body parameters
-   */
-  public String generateTokenQuery(final String token, FetchMethod grantType) {
+  public JsonObject performTokenCall(final String token, FetchMethod grantType) {
     final StringBuilder formBodyBuilder;
 
     switch ( grantType ){
@@ -181,21 +168,13 @@ public class OidcClient {
       formBodyBuilder.append( "&client_secret=" )
           .append( URLEncoder.encode( clientSecret, CHARSET ) );
 
-    return formBodyBuilder
+    final var formBody = formBodyBuilder
         .append("&redirect_uri=")
         .append(URLEncoder.encode(redirectUri, CHARSET))
         .append("&client_id=")
         .append(URLEncoder.encode(clientId, CHARSET))
         .toString();
-  }
 
-  /**
-   * Performs a post call to the token-endpoint with a provided form-body.
-   *
-   * @param formBody
-   * @return a JSONObject containing jwt tokens
-   */
-  public JsonObject performTokenCall(final String formBody){
     try {
       final var url = new URL(tokenUrl);
       final var cn = (HttpURLConnection) url.openConnection();
