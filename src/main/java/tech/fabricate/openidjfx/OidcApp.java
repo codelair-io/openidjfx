@@ -26,15 +26,9 @@ public class OidcApp extends Application {
   private static final String AUTH_URL = "OIDC_AUTH_URL";
   private static final String TOKEN_URL = "OIDC_TOKEN_URL";
 
-  private final OidcClient oidcClient = OidcClient.Builder.newBuilder()
-      .setRedirectUri(REDIRECT_URL)
-      .setAuthUrl(AUTH_URL)
-      .setTokenUrl(TOKEN_URL)
-      .setClientId(CLIENT_ID)
-      .setClientSecret( CLIENT_SECRET )
-      .setUsername( USERNAME )
-      .setPassword( PASSWORD )
-      .build();
+  private final OidcClient oidcClient = OidcClient.Builder.newBuilder().setRedirectUri(REDIRECT_URL)
+      .setAuthUrl(AUTH_URL).setTokenUrl(TOKEN_URL).setClientId(CLIENT_ID).setClientSecret(CLIENT_SECRET)
+      .setUsername(USERNAME).setPassword(PASSWORD).build();
 
   private Text statusText;
   private String expectedState;
@@ -59,13 +53,7 @@ public class OidcApp extends Application {
 
     statusText = new Text("Not logged in, yet!");
     statusText.setWrappingWidth(800);
-    final var pane = new FlowPane(
-        Orientation.HORIZONTAL,
-        loginACGBtn,
-        loginCAGBtn,
-        loginDAGBtn,
-        statusText
-    );
+    final var pane = new FlowPane(Orientation.HORIZONTAL, loginACGBtn, loginCAGBtn, loginDAGBtn, statusText);
 
     final var scene = new Scene(pane, 800, 500);
 
@@ -73,7 +61,6 @@ public class OidcApp extends Application {
     primaryStage.setScene(scene);
     primaryStage.show();
   }
-
 
   private void runHttpServer() throws Exception {
     final var httpServer = HttpServer.create(new InetSocketAddress(REDIRECT_PORT), 0);
@@ -113,18 +100,18 @@ public class OidcApp extends Application {
     getHostServices().showDocument(oidcClient.generateAuthCall(expectedState));
   }
 
-  private void initiateClientCredLogin ( ActionEvent actionEvent ) {
+  private void initiateClientCredLogin(ActionEvent actionEvent) {
     expectedState = UUID.randomUUID().toString();
 
-    final var tokenJson = oidcClient.performTokenCall( OidcClient.FetchMethod.CLIENT_CREDENTIALS_GRANT );
-    initTokenRefresher( tokenJson );
-    processTokenJson( tokenJson );
+    final var tokenJson = oidcClient.performTokenCall(OidcClient.FetchMethod.CLIENT_CREDENTIALS_GRANT);
+    initTokenRefresher(tokenJson);
+    processTokenJson(tokenJson);
   }
 
-  private void initiateDirectAccessGrantLogin ( ActionEvent actionEvent ) {
-    final var tokenJson = oidcClient.performTokenCall( OidcClient.FetchMethod.DIRECT_ACCESS_GRANT );
-    initTokenRefresher( tokenJson );
-    processTokenJson( tokenJson );
+  private void initiateDirectAccessGrantLogin(ActionEvent actionEvent) {
+    final var tokenJson = oidcClient.performTokenCall(OidcClient.FetchMethod.DIRECT_ACCESS_GRANT);
+    initTokenRefresher(tokenJson);
+    processTokenJson(tokenJson);
   }
 
   private void processRedirectCall(final String authCode, final String state) {
@@ -134,26 +121,27 @@ public class OidcApp extends Application {
 
     // Do OAuth 2 token requests
     final JsonObject tokenJson = oidcClient.performTokenCall(authCode, OidcClient.FetchMethod.AUTHORIZATION_CODE_GRANT);
-    initTokenRefresher( tokenJson );
+    initTokenRefresher(tokenJson);
     processTokenJson(tokenJson);
   }
 
   private void processTokenJson(final JsonObject tokenJson) {
     accessToken = tokenJson.getString("access_token");
     refreshToken = tokenJson.getString("refresh_token");
-    statusText.setText("\nAccess Token: " + accessToken
-        + "\n\nRefresh Token: " + refreshToken);
+    statusText.setText("\nAccess Token: " + accessToken + "\n\nRefresh Token: " + refreshToken);
   }
 
-  private void initTokenRefresher(JsonObject tokenJson){
+  private void initTokenRefresher(JsonObject tokenJson) {
 
     long refreshDelay = tokenJson.getInt("expires_in") * 1000L;
     /*
-     Now schedule to get new access and refresh tokens based on expiry. CAVEAT EMPTOR: In a real-world application
-     you would probably not blindly refresh just because the access token expires. You would implement an algorithm
-     that only requests new tokens before the refresh token expires - or; when making an external call and the access
-     token has expired (but of course before the refresh token also expired).
-      */
+     * Now schedule to get new access and refresh tokens based on expiry. CAVEAT
+     * EMPTOR: In a real-world application you would probably not blindly refresh
+     * just because the access token expires. You would implement an algorithm that
+     * only requests new tokens before the refresh token expires - or; when making
+     * an external call and the access token has expired (but of course before the
+     * refresh token also expired).
+     */
     final var timer = new Timer("RefreshTokenTimer", true);
     timer.scheduleAtFixedRate(new TimerTask() {
       @Override
