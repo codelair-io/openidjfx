@@ -37,6 +37,13 @@ public class OidcClient {
      */
     CLIENT_CREDENTIALS_GRANT,
 
+    /**
+     * Enables support for Direct Access Grants, username/password of user is exchanged directly for access token.
+     * In terms of OAuth2 specification, this enables support of 'Resource Owner Password Credentials Grant' for this client.
+     * - Client will ask the user for their authorization credentials (ususally a username and password).
+     */
+    DIRECT_ACCESS_GRANT,
+
     IMPLICIT_GRANT
   }
 
@@ -44,8 +51,10 @@ public class OidcClient {
     private String tokenUrl;
     private String authUrl;
     private String clientId;
-    private String redirectUri;
     private String clientSecret;
+    private String username;
+    private String password;
+    private String redirectUri;
 
     public static Builder newBuilder() {
       return new Builder();
@@ -76,6 +85,16 @@ public class OidcClient {
       return this;
     }
 
+    public Builder setUsername ( String username ) {
+      this.username = username;
+      return this;
+    }
+
+    public Builder setPassword ( String password ) {
+      this.password = password;
+      return this;
+    }
+
     public OidcClient build() {
       if (tokenUrl == null || authUrl == null || clientId == null || redirectUri == null) {
         throw new IllegalArgumentException("Following builder setters are mandatory" +
@@ -86,7 +105,15 @@ public class OidcClient {
         );
       }
 
-      return new OidcClient(tokenUrl, authUrl, clientId, redirectUri, clientSecret);
+      return new OidcClient(
+          tokenUrl,
+          authUrl,
+          clientId,
+          redirectUri,
+          clientSecret,
+          username,
+          password
+      );
     }
   }
 
@@ -95,18 +122,30 @@ public class OidcClient {
   private final String clientId;
   private final String redirectUri;
   private final String clientSecret;
+  private final String username;
+  private final String password;
 
-  private OidcClient(String tokenUrl, String authUrl, String clientId, String redirectUri, String clientSecret) {
+  private OidcClient(
+      String tokenUrl,
+      String authUrl,
+      String clientId,
+      String redirectUri,
+      String clientSecret,
+      String username,
+      String password) {
     this.tokenUrl = tokenUrl;
     this.authUrl = authUrl;
     this.clientId = clientId;
     this.redirectUri = redirectUri;
     this.clientSecret = clientSecret;
+    this.username = username;
+    this.password = password;
+
   }
 
   /**
    * Generates a complete URL to the auth-endpoint. It is up to the caller to decide how she or he wants to open a browser.
-   * Specific for the Authorization_code grant type
+   * Specific for the AUTHORIZATION_CODE_GRANT grant type
    *
    * @param state the state to send with the auth-request.
    * @return a complete auth-URL.
@@ -127,7 +166,8 @@ public class OidcClient {
 
   public JsonObject performTokenCall(FetchMethod grantType){
     if( grantType != FetchMethod.CLIENT_CREDENTIALS_GRANT &&
-        grantType != FetchMethod.IMPLICIT_GRANT )
+        grantType != FetchMethod.IMPLICIT_GRANT &&
+        grantType != FetchMethod.DIRECT_ACCESS_GRANT)
       throw new UnsupportedOperationException("Unsupported: Must provide token for grant-type:" + grantType.toString());
     return performTokenCall( "", grantType );
   }
@@ -138,7 +178,6 @@ public class OidcClient {
     switch ( grantType ){
 
       case AUTHORIZATION_CODE_GRANT:
-
         formBodyBuilder = new StringBuilder("grant_type=authorization_code")
             .append("&code=")
             .append(URLEncoder.encode(token, CHARSET));
@@ -149,11 +188,19 @@ public class OidcClient {
             .append("&client_secret=")
             .append(URLEncoder.encode(this.clientSecret, CHARSET));
         break;
-
       case REFRESH_TOKEN_GRANT:
         formBodyBuilder = new StringBuilder("grant_type=refresh_token")
             .append("&refresh_token=")
             .append(URLEncoder.encode(token, CHARSET));
+        break;
+      case DIRECT_ACCESS_GRANT:
+        formBodyBuilder = new StringBuilder( "grant_type=password" )
+            .append("&username=")
+            .append( URLEncoder.encode( username, CHARSET ) )
+            .append("&password=")
+            .append( URLEncoder.encode( password, CHARSET ) )
+            .append( "&scope=" )
+            .append(URLEncoder.encode("openid profile", CHARSET));
         break;
 
       case IMPLICIT_GRANT:

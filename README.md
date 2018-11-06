@@ -3,6 +3,7 @@
 Small example how to do the following OAUTH 2.0 grant flows:  
 - Authorization Code Grant  
 - Client Credentials Grant  
+- Resource Owner Credentials Grant (Direct Access Grant)
 - Refresh Token Grant  
 
 ## Building and running the application
