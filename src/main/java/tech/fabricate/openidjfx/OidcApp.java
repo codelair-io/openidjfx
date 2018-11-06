@@ -19,10 +19,12 @@ import java.util.UUID;
 public class OidcApp extends Application {
   private static final int REDIRECT_PORT = 32323;
   private static final String REDIRECT_URL = "http://localhost:" + REDIRECT_PORT + "/oidc";
-  private static final String CLIENT_ID = "myclient";
-  private static final String CLIENT_SECRET = "myclient-secret";
-  private static final String AUTH_URL = "https://example.com/openid-connect/auth";
-  private static final String TOKEN_URL = "https://example.com/openid-connect/token";
+  private static final String CLIENT_ID = "CLIENT_ID";
+  private static final String USERNAME = "CLIENT_USERNAME";
+  private static final String PASSWORD = "CLIENT_PASSWORD";
+  private static final String CLIENT_SECRET = "CLIENT_SECRET";
+  private static final String AUTH_URL = "OIDC_AUTH_URL";
+  private static final String TOKEN_URL = "OIDC_TOKEN_URL";
 
   private final OidcClient oidcClient = OidcClient.Builder.newBuilder()
       .setRedirectUri(REDIRECT_URL)
@@ -30,6 +32,8 @@ public class OidcApp extends Application {
       .setTokenUrl(TOKEN_URL)
       .setClientId(CLIENT_ID)
       .setClientSecret( CLIENT_SECRET )
+      .setUsername( USERNAME )
+      .setPassword( PASSWORD )
       .build();
 
   private Text statusText;
@@ -50,12 +54,16 @@ public class OidcApp extends Application {
     final var loginCAGBtn = new Button("Login using Client Credentials Grant");
     loginCAGBtn.setOnAction(this::initiateClientCredLogin);
 
+    final var loginDAGBtn = new Button("Login using Direct Access Grant");
+    loginDAGBtn.setOnAction(this::initiateDirectAccessGrantLogin);
+
     statusText = new Text("Not logged in, yet!");
     statusText.setWrappingWidth(800);
     final var pane = new FlowPane(
         Orientation.HORIZONTAL,
         loginACGBtn,
         loginCAGBtn,
+        loginDAGBtn,
         statusText
     );
 
@@ -65,7 +73,6 @@ public class OidcApp extends Application {
     primaryStage.setScene(scene);
     primaryStage.show();
   }
-
 
 
   private void runHttpServer() throws Exception {
@@ -110,6 +117,12 @@ public class OidcApp extends Application {
     expectedState = UUID.randomUUID().toString();
 
     final var tokenJson = oidcClient.performTokenCall( OidcClient.FetchMethod.CLIENT_CREDENTIALS_GRANT );
+    initTokenRefresher( tokenJson );
+    processTokenJson( tokenJson );
+  }
+
+  private void initiateDirectAccessGrantLogin ( ActionEvent actionEvent ) {
+    final var tokenJson = oidcClient.performTokenCall( OidcClient.FetchMethod.DIRECT_ACCESS_GRANT );
     initTokenRefresher( tokenJson );
     processTokenJson( tokenJson );
   }
